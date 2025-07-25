@@ -3,7 +3,12 @@ from streamlit_community_navigation_bar import st_navbar
 import pages as pg
 from auth import init_db
 
-st.set_page_config(page_title="Melodylg - For your music needs!", page_icon="logo-square.svg", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(
+    page_title="Melodylg - For your music needs!",
+    page_icon="logo-square.svg",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
 
 pages = ["Journal", "Search", "Account"]
 
@@ -13,9 +18,7 @@ styles = {
         "justify-content": "left",
         "height": "6rem",
     },
-    "div": {
-        "max-width": "10rem",
-    },
+    "div": {"max-width": "10rem"},
     "img": {
         "padding-right": "2rem",
         "height": "5rem",
@@ -27,14 +30,13 @@ styles = {
     },
     "active": {
         "background-color": "white",
-        "color": "rgb(102, 153, 255)",  
+        "color": "rgb(102, 153, 255)",
         "font-weight": "600",
         "border-radius": "0.5rem",
         "padding": "0.5rem 1rem",
         "box-shadow": "0 2px 6px rgba(0,0,0,0.1)",
         "transition": "all 0.3s ease-in-out",
     }
-
 }
 
 options = {
@@ -43,31 +45,23 @@ options = {
 }
 
 if "page" not in st.session_state:
-    selected_page = st_navbar(
-        pages,
-        styles=styles,
-        logo_path="logo-circle.svg",
-        options=options
-    )
-    st.session_state.page = selected_page
+    st.session_state.page = "Home"
+if "page_trigger" not in st.session_state:
+    st.session_state.page_trigger = "navbar"
 
-else:
-    selected_page = st_navbar(
-        pages,
-        styles=styles,
-        logo_path="logo-circle.svg",
-        options=options
-    )
+selected_page = st_navbar(
+    pages,
+    logo_path="logo-circle.svg",
+    styles=styles,
+    options=options
+)
 
-if "page" not in st.session_state:
-    st.session_state.page = selected_page
-elif selected_page != st.session_state.page:
+if st.session_state.page_trigger == "navbar" and selected_page != st.session_state.page:
     st.session_state.page = selected_page
 
 st.markdown(
     """
     <style>
-
     .stApp .stNavbar, .nav-list {
         overflow-x: auto !important;
         white-space: nowrap;
@@ -89,19 +83,21 @@ st.markdown(
 
     .nav-bottom-line {
         position: fixed;
-        top: 6rem; /* Adjust to the height of your navbar */
+        top: 6rem;
         left: 0;
         right: 0;
         height: 0.3rem;
         background-color: royalblue;
         z-index: 9999;
     }
-
     </style>
     <div class="nav-bottom-line"></div>
     """,
     unsafe_allow_html=True
 )
+
+# --- Routing ---
+init_db()
 
 functions = {
     "Home": pg.show_home,
@@ -110,12 +106,11 @@ functions = {
     "Account": pg.show_login,
 }
 
-init_db()
+functions[st.session_state.page]()
 
-current_page = st.session_state.page
-go_to = functions.get(current_page)
-
-if go_to:
-    go_to()
-else:
-    st.error("Page not found.")
+with st.expander("🔧 Debug Info"):
+    st.write(selected_page)
+    st.write("**Current Page:**", st.session_state.page)
+    st.write("**Page Trigger:**", st.session_state.page_trigger)
+    st.write("**Full Session State:**")
+    st.json(st.session_state)

@@ -310,6 +310,7 @@ def show_login():
             st.session_state.logged_in = False
             st.session_state.username = ""
             st.success("You have been logged out.")
+            st.session_state.page_trigger = "internal"
             st.rerun()
         st.stop()
 
@@ -399,9 +400,13 @@ def show_login():
                     st.session_state.auth_mode = "login"
 
 def show_journal():
-    username = st.session_state.username if "username" in st.session_state else None
+    if st.session_state.get("page_trigger") == "internal":
+        st.session_state.page = "Journal"
 
-    st.session_state.page = "Journal"  
+    if st.session_state.get("page_trigger") != "internal":
+        st.session_state.page_trigger = "navbar"
+
+    username = st.session_state.username if "username" in st.session_state else None
 
     st.markdown("""
         <style>
@@ -446,7 +451,6 @@ def show_journal():
 
     col1, col2 = st.columns([1.1, 2])
 
-    # ------------------ 🔎 LEFT COLUMN: Search ------------------
     with col1:
         st.markdown("### 🔍 Search Music")
 
@@ -512,10 +516,9 @@ def show_journal():
                                 image=image
                             )
                             st.session_state.page = "Journal"
-                            st.success("Added to journal!")
+                            st.session_state.page_trigger = "internal"
                             st.rerun()
 
-    # ------------------ 📓 RIGHT COLUMN: Journal Entries ------------------
     with col2:
         st.markdown("### 📒 Your Journal")
         entries = get_journal_entries(username)
@@ -567,12 +570,13 @@ def show_journal():
                         if st.button("Save Changes", key=f"save_{entry['id']}_btn"):
                             update_journal_entry(entry['id'], new_notes)
                             del st.session_state.editing_entry
-                            st.success("Updated!")
                             st.session_state.page = "Journal"
+                            st.session_state.page_trigger = "internal"
                             st.rerun()
                         if st.button("Cancel", key=f"cancel_{entry['id']}_btn"):
                             del st.session_state.editing_entry
                             st.session_state.page = "Journal"
+                            st.session_state.page_trigger = "internal"
                             st.rerun()
                     else:
                         if entry['notes']:
@@ -583,10 +587,13 @@ def show_journal():
                             if st.button("🗑️ Delete", key=f"del_{entry['id']}_btn"):
                                 delete_journal_entry(entry['id'])
                                 st.session_state.page = "Journal"
-                                st.success("Deleted!")
+                                st.session_state.page_trigger = "internal"
                                 st.rerun()
                         with col2:
                             if st.button("✏️ Edit", key=f"edit_{entry['id']}_btn"):
                                 st.session_state.editing_entry = entry['id']
                                 st.session_state.page = "Journal"
+                                st.session_state.page_trigger = "internal"
                                 st.rerun()
+
+
