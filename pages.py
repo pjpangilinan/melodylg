@@ -1,6 +1,6 @@
 import streamlit as st
 from music import DeezerAPI
-from auth import login_user, register_user, reset_password
+from auth import register_user, reset_password, user_exists, is_correct_password, is_strong_password
 from streamlit_extras.stylable_container import stylable_container
 
 api = DeezerAPI()
@@ -241,7 +241,7 @@ def show_login():
     if "logged_in" not in st.session_state:
         st.session_state.logged_in = False
     if "auth_mode" not in st.session_state:
-        st.session_state.auth_mode = "login"
+        st.session_state.auth_mode = "login"  # Options: login, register, forgot
 
     st.markdown("""
         <style>
@@ -255,7 +255,6 @@ def show_login():
             font-weight: 700;
             color: rgb(40, 40, 90);
             margin-bottom: 2rem;
-            font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
         }
 
         .auth-tab button {
@@ -304,8 +303,14 @@ def show_login():
     """, unsafe_allow_html=True)
 
     if st.session_state.logged_in:
-        st.success(f"You're already logged in as **{st.session_state.username}**")
-        return
+        st.success(f"✅ You are logged in as **{st.session_state.username}**")
+
+        if st.button("🔓 Logout"):
+            st.session_state.logged_in = False
+            st.session_state.username = ""
+            st.success("You have been logged out.")
+            st.rerun()
+        st.stop()
 
     with stylable_container(
         key="auth_box",
@@ -314,7 +319,7 @@ def show_login():
                 background-color: #fdfdfd;
                 padding: 3rem 2.5rem;
                 border-radius: 20px;
-                max-width: 550px;
+                max-width: 600px;
                 margin: 4rem auto;
                 box-shadow: 0 10px 28px rgba(0, 0, 0, 0.1);
                 margin-top: 0rem !important;
@@ -333,10 +338,8 @@ def show_login():
                 if st.button(label, key=f"mode_{key}"):
                     st.session_state.auth_mode = key
 
-                # Add invisible class div for styling hooks
-                st.markdown(f'<div class="{button_style}" style="display:none;"></div>', unsafe_allow_html=True)
+        st.markdown('<div style="margin-bottom: 1.5rem;"></div>', unsafe_allow_html=True)
 
-        # ── Mode-specific Form ──
         mode = st.session_state.auth_mode
 
         if mode == "login":
@@ -344,12 +347,14 @@ def show_login():
             password = st.text_input("Password", type="password")
 
             if st.button("Login"):
-                if login_user(username, password):
+                if not user_exists(username):
+                    st.error("❌ Username not found.")
+                elif not is_correct_password(username, password):
+                    st.error("❌ Incorrect password.")
+                else:
+                    st.success("✅ Login successful!")
                     st.session_state.logged_in = True
                     st.session_state.username = username
-                    st.success("✅ Login successful!")
-                else:
-                    st.error("❌ Invalid username or password.")
 
         elif mode == "register":
             username = st.text_input("Create Username")
@@ -357,24 +362,37 @@ def show_login():
             confirm = st.text_input("Confirm Password", type="password")
 
             if st.button("Register"):
-                if password != confirm:
+                if not username or not password or not confirm:
+                    st.warning("⚠️ All fields are required.")
+                elif user_exists(username):
+                    st.error("🚫 That username is already taken. Try another.")
+                elif password != confirm:
                     st.warning("⚠️ Passwords do not match.")
-                elif register_user(username, password):
-                    st.success("✅ Registered! You can now log in.")
-                    st.session_state.auth_mode = "login"
+                elif not is_strong_password(password):
+                    st.error("""
+                        ❌ Weak password.
+                        Password must be at least 8 characters long and contain:
+                        - ✅ Uppercase letters  
+                        - ✅ Lowercase letters  
+                        - ✅ Numbers  
+                        - ✅ Special characters (e.g. !@#&)
+                    """)
                 else:
-                    st.error("⚠️ Username already exists.")
+                    success = register_user(username, password)
+                    if success:
+                        st.success("✅ Account created! You can now log in.")
+                        st.session_state.auth_mode = "login"
+                    else:
+                        st.error("❌ Something went wrong while creating the account. Please try again.")
 
         elif mode == "forgot":
             username = st.text_input("Username")
             new_pass = st.text_input("New Password", type="password")
 
             if st.button("Reset Password"):
-                if reset_password(username, new_pass):
-                    st.success("🔁 Password reset! You can now log in.")
-                    st.session_state.auth_mode = "login"
-                else:
+                if not user_exists(username):
                     st.error("❌ Username not found.")
-
-def show_register():
-    ...
+                else:
+                    reset_password(username, new_pass)
+                    st.success("✅ Password reset! You can now log in.")
+                    st.session_state.auth_mode = "login"
