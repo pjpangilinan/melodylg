@@ -47,11 +47,11 @@ class DeezerAPI:
     def get_track(self, track_id: int) -> Dict[str, Any]:
         return self._get(f"track/{track_id}")
 
-    def search_track(self, query: str, limit: int = 5) -> List[Dict[str, Any]]:
+    def search_tracks(self, query: str, limit: int = 5) -> List[Dict[str, Any]]:
         return self._get("search/track", {"q": query, "limit": limit}).get("data", [])
 
-    def search_artist(self, query: str, limit: int = 5) -> List[Dict[str, Any]]:
+    def search_artists(self, query: str, limit: int = 5) -> List[Dict[str, Any]]:
         return self._get("search/artist", {"q": query, "limit": limit}).get("data", [])
 
-    def search_album(self, query: str, limit: int = 5) -> List[Dict[str, Any]]:
+    def search_albums(self, query: str, limit: int = 5) -> List[Dict[str, Any]]:
         return self._get("search/album", {"q": query, "limit": limit}).get("data", [])

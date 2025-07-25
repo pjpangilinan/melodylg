@@ -1,10 +1,11 @@
 import streamlit as st
 from streamlit_community_navigation_bar import st_navbar
-from music import DeezerAPI
+import pages as pg
+from auth import init_db
 
 st.set_page_config(page_title="Melodylg - For your music needs!", page_icon="logo-square.svg", layout="wide", initial_sidebar_state="collapsed")
 
-pages = ["Dashboard", "Journal", "Search", "Login", "Register"]
+pages = ["Dashboard", "Journal", "Search", "Account"]
 
 styles = {
     "nav": {
@@ -51,6 +52,22 @@ page = st_navbar(
 st.markdown(
     """
     <style>
+
+    .stApp .stNavbar, .nav-list {
+        overflow-x: auto !important;
+        white-space: nowrap;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .nav-list li {
+        display: inline-block !important;
+        margin-right: 1rem;
+    }
+
+    .nav-list::-webkit-scrollbar {
+        display: none;
+    }
+
     .block-container {
         margin-top: -8rem !important;
     }
@@ -71,154 +88,16 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-api = DeezerAPI()
+functions = {
+    "Home": pg.show_home,
+    #"Dashboard": pg.show_dashboard,
+    #"Journal": pg.show_journal,
+    "Search": pg.show_search,
+    "Account": pg.show_login,
+}
 
-col1, col2, col3 = st.columns(3)
+init_db()
 
-with col1:
-    st.markdown(
-        """
-        <h3 style="
-            text-align: center;
-            background-color: rgb(102, 153, 255);
-            color: white;
-            padding: 12px;
-            border-radius: 8px;
-            font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
-            margin-bottom: 20px;">
-            Top Songs
-        </h3>
-        """,
-        unsafe_allow_html=True
-    )
-
-    top_tracks = api.get_top_tracks(limit=6)
-
-    for track in top_tracks:
-        cover_url = track["album"]["cover_medium"]
-        title = track["title"]
-        artist = track["artist"]["name"]
-        streams = track.get("rank", "N/A")
-        track_link = track["link"]
-        preview_url = track.get("preview")
-
-        with st.container():
-            st.markdown(
-                f"""
-                <div style="display: flex; align-items: center; justify-content: flex-start;
-                            padding: 10px; border: 1px solid #DDD; border-radius: 10px;
-                            margin-bottom: 10px; min-height: 120px;">
-                    <img src="{cover_url}" width="80" style="border-radius: 5px; margin-right: 15px;">
-                    <div style="flex: 1;">
-                        <a href="{track_link}" target="_blank" style="text-decoration: none; color: black;">
-                            <strong style="font-size: 16px; line-height: 1.2;">{title}</strong>
-                        </a><br>
-                        <span style="color: gray; font-size: 14px;">{artist}</span><br>
-                        <span style="font-size: 12px; color: #555;">Streams: {streams}</span>
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-
-        if isinstance(preview_url, str) and preview_url.strip().startswith("http"):
-            st.audio(preview_url, format="audio/mp3")
-
-
-with col2:
-    st.markdown(
-        """
-        <h3 style="
-            text-align: center;
-            background-color: rgb(102, 153, 255);
-            color: white;
-            padding: 12px;
-            border-radius: 8px;
-            font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
-            margin-bottom: 20px;">
-            Top Albums
-        </h3>
-        """,
-        unsafe_allow_html=True
-    )
-    top_albums = api.get_top_albums(limit=6)
-
-    for album in top_albums:
-        cover_url = album["cover_medium"]
-        title = album["title"]
-        artist = album["artist"]["name"]
-        rank = album.get("position", "N/A") 
-        link = album["link"]
-
-        with st.container():
-            st.markdown(
-                f"""
-                <div style="display: flex; align-items: center; justify-content: flex-start;
-                            padding: 10px; border: 1px solid #DDD; border-radius: 10px;
-                            margin-bottom: 10px; min-height: 120px;">
-                    <img src="{cover_url}" width="80" style="border-radius: 5px; margin-right: 15px;">
-                    <div style="flex: 1;">
-                        <a href="{link}" target="_blank" style="text-decoration: none; color: black;">
-                            <strong style="font-size: 16px; line-height: 1.2;">{title}</strong>
-                        </a><br>
-                        <span style="color: gray; font-size: 14px;">{artist}</span><br>
-                        <span style="font-size: 12px; color: #555;">Rank: {rank}</span>
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-
-with col3:
-    st.markdown(
-        """
-        <h3 style="
-            text-align: center;
-            background-color: rgb(102, 153, 255);
-            color: white;
-            padding: 12px;
-            border-radius: 8px;
-            font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
-            margin-bottom: 20px;">
-            Top Artists
-        </h3>
-        """,
-        unsafe_allow_html=True
-    )
-
-    top_artists = api.get_top_artists(limit=4)
-
-    for artist in top_artists:
-        picture_url = artist["picture_medium"]
-        name = artist["name"]
-        link = artist["link"]
-
-        try:
-            top_track = api.get_artist_top_tracks(artist["id"])[0]
-            track_title = top_track["title"]
-            preview_url = top_track.get("preview", "")
-        except Exception:
-            track_title = "Unavailable"
-            preview_url = ""
-
-        with st.container():
-            st.markdown(
-                f"""
-                <div style="display: flex; align-items: center; justify-content: flex-start;
-                            padding: 10px; border: 1px solid #DDD; border-radius: 10px;
-                            margin-bottom: 10px; min-height: 140px;">
-                    <img src="{picture_url}" width="80" style="border-radius: 50%; margin-right: 15px;">
-                    <div style="flex: 1;">
-                        <a href="{link}" target="_blank" style="text-decoration: none; color: black;">
-                            <strong style="font-size: 16px; line-height: 1.2;">{name}</strong>
-                        </a><br>
-                        <span style="font-size: 14px; color: gray;">Top Track: {track_title}</span><br>
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-
-            if preview_url:
-                st.audio(preview_url, format="audio/mp3")
-
+go_to = functions.get(page)
+if go_to:
+    go_to()
