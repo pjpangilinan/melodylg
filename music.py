@@ -55,3 +55,7 @@ class DeezerAPI:
 
     def search_albums(self, query: str, limit: int = 5) -> List[Dict[str, Any]]:
         return self._get("search/album", {"q": query, "limit": limit}).get("data", [])
+    
+    def search_all(self, query: str, limit: int = 5) -> List[Dict[str, Any]]:
+        """Search across tracks — extendable to include albums/artists."""
+        return self.search_tracks(query, limit=limit)

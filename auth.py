@@ -21,12 +21,30 @@ def is_strong_password(password):
 def init_db():
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
+
+    # Create users table
     c.execute("""
         CREATE TABLE IF NOT EXISTS users (
             username TEXT PRIMARY KEY,
             password TEXT
         )
     """)
+
+    # Create journal table with image column included
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS journal (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT,
+            song_title TEXT,
+            artist_name TEXT,
+            album_title TEXT,
+            preview_url TEXT,
+            notes TEXT,
+            date_added TEXT,
+            image TEXT
+        )
+    """)
+
     conn.commit()
     conn.close()
 
@@ -71,7 +89,6 @@ def register_user(username, password):
     finally:
         conn.close()
 
-
 def login_user(username, password):
     """Returns True if login successful, else False."""
     return is_correct_password(username, password)
@@ -88,3 +105,56 @@ def reset_password(username, new_password):
     conn.commit()
     conn.close()
     return True
+
+def add_journal_entry(username, song_title, artist_name, album_title, preview_url, notes, date_added, image):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("""
+        INSERT INTO journal (username, song_title, artist_name, album_title, preview_url, notes, date_added, image)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, (username, song_title, artist_name, album_title, preview_url, notes, date_added, image))
+    conn.commit()
+    conn.close()
+
+
+def get_journal_entries(username):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("""
+        SELECT id, song_title, artist_name, album_title, preview_url, notes, date_added, image
+        FROM journal
+        WHERE username=?
+        ORDER BY date_added DESC
+    """, (username,))
+    rows = c.fetchall()
+    conn.close()
+
+    return [
+        {
+            "id": row[0],
+            "song_title": row[1],
+            "artist_name": row[2],
+            "album_title": row[3],
+            "preview_url": row[4],
+            "notes": row[5],
+            "date_added": row[6],
+            "image": row[7]
+        }
+        for row in rows
+    ]
+
+
+def delete_journal_entry(entry_id):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("DELETE FROM journal WHERE id=?", (entry_id,))
+    conn.commit()
+    conn.close()
+
+
+def update_journal_entry(entry_id, notes):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("UPDATE journal SET notes=? WHERE id=?", (notes, entry_id))
+    conn.commit()
+    conn.close()

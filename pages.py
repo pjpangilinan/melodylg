@@ -1,7 +1,8 @@
 import streamlit as st
 from music import DeezerAPI
-from auth import register_user, reset_password, user_exists, is_correct_password, is_strong_password
+from auth import register_user, reset_password, user_exists, is_correct_password, is_strong_password, get_journal_entries, add_journal_entry, delete_journal_entry, update_journal_entry
 from streamlit_extras.stylable_container import stylable_container
+from datetime import datetime
 
 api = DeezerAPI()
 
@@ -241,7 +242,7 @@ def show_login():
     if "logged_in" not in st.session_state:
         st.session_state.logged_in = False
     if "auth_mode" not in st.session_state:
-        st.session_state.auth_mode = "login"  # Options: login, register, forgot
+        st.session_state.auth_mode = "login"  
 
     st.markdown("""
         <style>
@@ -396,3 +397,196 @@ def show_login():
                     reset_password(username, new_pass)
                     st.success("✅ Password reset! You can now log in.")
                     st.session_state.auth_mode = "login"
+
+def show_journal():
+    username = st.session_state.username if "username" in st.session_state else None
+
+    st.session_state.page = "Journal"  
+
+    st.markdown("""
+        <style>
+        .stButton > button {
+            background-color: royalblue;
+            color: white;
+            font-weight: 600;
+            padding: 0.6em;
+            width: 100%;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: background-color 0.3s ease;
+        }
+        .stButton > button:hover {
+            background-color: #4169e1;
+        }
+        .stTextInput input, .stTextArea textarea, .stSelectbox select {
+            border-radius: 10px !important;
+            padding: 0.5rem;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    def render_card(img, title, subtitle, link, circle=False):
+        radius = "50%" if circle else "10px"
+        return f"""
+            <div style="display: flex; align-items: center; padding: 15px;
+                        border: 1px solid #ddd; border-radius: 12px; background-color: #f9f9f9;
+                        margin-bottom: 10px;">
+                <img src="{img}" width="80" 
+                    style="border-radius: {radius}; margin-right: 15px;">
+                <div>
+                    <a href="{link}" target="_blank" 
+                    style="text-decoration: none; color: #222;">
+                        <strong style="font-size: 16px;">{title}</strong>
+                    </a><br>
+                    <span style="color: #666;">{subtitle}</span>
+                </div>
+            </div>
+        """
+
+    col1, col2 = st.columns([1.1, 2])
+
+    # ------------------ 🔎 LEFT COLUMN: Search ------------------
+    with col1:
+        st.markdown("### 🔍 Search Music")
+
+        with stylable_container(
+            key="search_box",
+            css_styles="""
+                {
+                    background-color: #fafafa;
+                    padding: 1.5rem;
+                    border-radius: 16px;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+                }
+            """
+        ):
+            search_type = st.selectbox("Search by", ["Track", "Artist", "Album"])
+            query = st.text_input("Type to search", placeholder="e.g. Taylor Swift, Red, After Hours")
+
+            results = []
+            if query:
+                if search_type == "Track":
+                    results = api.search_tracks(query)
+                elif search_type == "Artist":
+                    results = api.search_artists(query)
+                elif search_type == "Album":
+                    results = api.search_albums(query)
+
+            if results:
+                for item in results:
+                    title = item.get("title") or item.get("name")
+                    artist = item.get("artist", {}).get("name", "Unknown")
+                    album = item.get("album", {}).get("title", "Unknown") if "album" in item else title
+                    preview = item.get("preview", "")
+                    image = item.get("album", {}).get("cover_medium", "") or item.get("picture_medium", "")
+                    link = item.get("link", "#")
+
+                    with stylable_container(
+                        key=f"card_{item['id']}",
+                        css_styles="""
+                            {
+                                margin-top: 1rem;
+                                background-color: #ffffff;
+                                border: 1px solid #ddd;
+                                padding: 1rem;
+                                border-radius: 12px;
+                                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+                            }
+                        """
+                    ):
+                        st.markdown(render_card(image, title, f"{artist} • {album}", link), unsafe_allow_html=True)
+                        if preview:
+                            st.audio(preview)
+
+                        notes = st.text_area("Notes", key=f"note_{item['id']}", label_visibility="collapsed", placeholder="Write your thoughts...")
+                        if st.button("Add to Journal", key=f"add_{item['id']}"):
+                            add_journal_entry(
+                                username=username,
+                                song_title=title,
+                                artist_name=artist,
+                                album_title=album,
+                                preview_url=preview,
+                                notes=notes,
+                                date_added=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                image=image
+                            )
+                            st.session_state.page = "Journal"
+                            st.success("Added to journal!")
+                            st.rerun()
+
+    # ------------------ 📓 RIGHT COLUMN: Journal Entries ------------------
+    with col2:
+        st.markdown("### 📒 Your Journal")
+        entries = get_journal_entries(username)
+
+        if not entries:
+            st.info("No entries yet.")
+        else:
+            for entry in entries:
+                with stylable_container(
+                    key=f"entry_{entry['id']}",
+                    css_styles="""
+                        {
+                            background-color: #ffffff;
+                            padding: 1.5rem;
+                            border-radius: 16px;
+                            margin-bottom: 1.5rem;
+                            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+                        }
+                    """
+                ):
+                    if entry.get("image"):
+                        st.markdown(f"""
+                            <div style="display: flex; gap: 1rem; align-items: flex-start;">
+                                <img src="{entry['image']}" width="120" style="border-radius: 10px;">
+                                <div style="flex: 1; text-align: center;">
+                                    <p style="font-size: 1.3rem; font-weight: bold; margin: 0;">{entry['song_title']}</p>
+                                    <p style="margin: 6px 0; color: #444;">
+                                        {entry['artist_name']} &nbsp;|&nbsp; {entry['album_title']} &nbsp;|&nbsp; 📅 {entry['date_added']}
+                                    </p>
+                                </div>
+                            </div>
+                        """, unsafe_allow_html=True)
+                    else:
+                        st.markdown(f"""
+                            <div style="text-align: center; margin-bottom: 0.5rem;">
+                                <p style="font-size: 1.3rem; font-weight: bold; margin: 0;">{entry['song_title']}</p>
+                                <p style="margin: 6px 0; color: #444;">
+                                    {entry['artist_name']} &nbsp;|&nbsp; {entry['album_title']} &nbsp;|&nbsp; 📅 {entry['date_added']}
+                                </p>
+                            </div>
+                        """, unsafe_allow_html=True)
+
+                    if entry['preview_url']:
+                        st.markdown('<div style="margin-top: 1rem; margin-bottom: 1rem;"></div>', unsafe_allow_html=True)
+                        st.audio(entry['preview_url'])
+
+                    if "editing_entry" in st.session_state and st.session_state.editing_entry == entry['id']:
+                        new_notes = st.text_area("Edit Notes", value=entry["notes"], key=f"edit_{entry['id']}_notes")
+                        if st.button("Save Changes", key=f"save_{entry['id']}_btn"):
+                            update_journal_entry(entry['id'], new_notes)
+                            del st.session_state.editing_entry
+                            st.success("Updated!")
+                            st.session_state.page = "Journal"
+                            st.rerun()
+                        if st.button("Cancel", key=f"cancel_{entry['id']}_btn"):
+                            del st.session_state.editing_entry
+                            st.session_state.page = "Journal"
+                            st.rerun()
+                    else:
+                        if entry['notes']:
+                            st.markdown(f"📝 **Notes:**  \n{entry['notes']}")
+
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            if st.button("🗑️ Delete", key=f"del_{entry['id']}_btn"):
+                                delete_journal_entry(entry['id'])
+                                st.session_state.page = "Journal"
+                                st.success("Deleted!")
+                                st.rerun()
+                        with col2:
+                            if st.button("✏️ Edit", key=f"edit_{entry['id']}_btn"):
+                                st.session_state.editing_entry = entry['id']
+                                st.session_state.page = "Journal"
+                                st.rerun()

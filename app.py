@@ -5,7 +5,7 @@ from auth import init_db
 
 st.set_page_config(page_title="Melodylg - For your music needs!", page_icon="logo-square.svg", layout="wide", initial_sidebar_state="collapsed")
 
-pages = ["Dashboard", "Journal", "Search", "Account"]
+pages = ["Journal", "Search", "Account"]
 
 styles = {
     "nav": {
@@ -42,12 +42,27 @@ options = {
     "show_sidebar": False,
 }
 
-page = st_navbar(
-    pages,
-    styles=styles,
-    logo_path="logo-circle.svg",
-    options=options
-)
+if "page" not in st.session_state:
+    selected_page = st_navbar(
+        pages,
+        styles=styles,
+        logo_path="logo-circle.svg",
+        options=options
+    )
+    st.session_state.page = selected_page
+
+else:
+    selected_page = st_navbar(
+        pages,
+        styles=styles,
+        logo_path="logo-circle.svg",
+        options=options
+    )
+
+if "page" not in st.session_state:
+    st.session_state.page = selected_page
+elif selected_page != st.session_state.page:
+    st.session_state.page = selected_page
 
 st.markdown(
     """
@@ -90,14 +105,17 @@ st.markdown(
 
 functions = {
     "Home": pg.show_home,
-    #"Dashboard": pg.show_dashboard,
-    #"Journal": pg.show_journal,
+    "Journal": pg.show_journal,
     "Search": pg.show_search,
     "Account": pg.show_login,
 }
 
 init_db()
 
-go_to = functions.get(page)
+current_page = st.session_state.page
+go_to = functions.get(current_page)
+
 if go_to:
     go_to()
+else:
+    st.error("Page not found.")
