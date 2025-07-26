@@ -45,9 +45,7 @@ options = {
 }
 
 if "page" not in st.session_state:
-    st.session_state.page = "Home"
-if "page_trigger" not in st.session_state:
-    st.session_state.page_trigger = "navbar"
+    st.session_state.page = "Journal"
 
 selected_page = st_navbar(
     pages,
@@ -56,7 +54,7 @@ selected_page = st_navbar(
     options=options
 )
 
-if st.session_state.page_trigger == "navbar" and selected_page != st.session_state.page:
+if selected_page and selected_page != st.session_state.page:
     st.session_state.page = selected_page
 
 st.markdown(
@@ -107,10 +105,3 @@ functions = {
 }
 
 functions[st.session_state.page]()
-
-with st.expander("🔧 Debug Info"):
-    st.write(selected_page)
-    st.write("**Current Page:**", st.session_state.page)
-    st.write("**Page Trigger:**", st.session_state.page_trigger)
-    st.write("**Full Session State:**")
-    st.json(st.session_state)
